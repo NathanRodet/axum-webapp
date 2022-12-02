@@ -6,7 +6,7 @@ CREATE TABLE IF NOT EXISTS users (
   deleted_at  TIMESTAMPTZ DEFAULT NULL,
   token       TEXT DEFAULT NULL
 );
-
+ 
 CREATE TABLE IF NOT EXISTS tasks (
   id            SERIAL PRIMARY KEY,
   priority      VARCHAR(4) DEFAULT NULL,
