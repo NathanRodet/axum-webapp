@@ -1,16 +1,30 @@
 # axum-webapp
+
 In depth learning of Axum and Rust
 
-## postgresql db
-
-### Setup
-
-docker compose up
-docker compose down
-docker compose exec axum-webapp-database-1 /bin/bash
+## Setup db
 
 ### Login
 
 - password = password
-- user     = postgres
+- user = postgres
 - database = postgres
+
+### Init and checkup
+
+```
+docker compose up
+docker compose down
+
+docker compose exec database /bin/bash
+psql -U postgres -d postgres
+\dt
+\dt+
+```
+
+### sea-orm
+
+```
+cargo install sea-orm-cli
+sea-orm-cli generate entity -o src/database
+```
