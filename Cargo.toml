@@ -21,3 +21,4 @@ sea-orm = { version = "0.10.5", features = [
 ] }
 dotenvy = "0.15.6"
 dotenvy_macro = "0.15.1"
+validator = { version = "0.16.0", features = ["derive"] }

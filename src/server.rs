@@ -8,7 +8,7 @@ async fn create_database_conn(database_uri: &str) -> DatabaseConnection {
 
 pub async fn run(database_uri: &str) {
     let app = create_routes();
-    let database_conn = create_database_conn(database_uri);
+    let _database_conn = create_database_conn(database_uri);
 
     axum::Server::bind(&"0.0.0.0:3000".parse().unwrap())
         .serve(app.await.into_make_service())
