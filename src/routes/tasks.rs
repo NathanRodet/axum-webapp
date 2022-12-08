@@ -59,24 +59,19 @@ pub async fn get_task(Path(id): Path<i32>, Extension(database_conn): Extension<D
 
 #[derive(Deserialize, Debug)]
 pub struct GetTaskQueryParams {
-    pub priority: Option<String>,
+    pub priority: String,
 }
 
 // This is the get route handler for all tasks
-pub async fn get_all_task(Extension(database_conn): Extension<DatabaseConnection>, Query(query_params): Query<GetTaskQueryParams>)
+pub async fn get_all_task(Extension(database_conn): Extension<DatabaseConnection>, query_params: Option<Query<GetTaskQueryParams>>)
   -> Result<Json<Vec<TaskResponse>>, StatusCode>{
 
-    // Filter by priority
-    let mut priority_filter = Condition::all();
-    if let Some(priority) = &query_params.priority {
-        // If the priority is empty, add the filter
-        priority_filter = if priority.is_empty() {
-            priority_filter.add(tasks::Column::Priority.is_null())
-        // If the priority is not empty, add the filter
-        } else {
-            priority_filter.add(tasks::Column::Priority.eq(query_params.priority))
-        };
-    }
+
+    let priority_filter = match query_params {
+        Some(query_params) => 
+        Condition::all().add(tasks::Column::Priority.eq(&*query_params.priority)),
+        None => Condition::all(),
+    };
 
     // Find all tasks
     let tasks = tasks::Entity::find()
