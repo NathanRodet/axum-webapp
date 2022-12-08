@@ -1,11 +1,11 @@
+use axum::extract::Query;
 use axum::{Extension, Json, extract::Path, response::IntoResponse, http::StatusCode};
-use sea_orm::{DatabaseConnection, Set, ActiveModelTrait, EntityTrait};
+use sea_orm::{DatabaseConnection, Set, ActiveModelTrait, EntityTrait, ColumnTrait, QueryFilter, Condition};
 use serde::{Serialize, Deserialize};
 use validator::Validate;
 
 use crate::database::tasks;
 
-// This is the JSON body
 #[derive(Deserialize, Serialize, Validate, Debug)]
 pub struct TaskRequest {
     pub title: String,
@@ -13,13 +13,7 @@ pub struct TaskRequest {
     pub description: Option<String>,
 }
 
-#[derive(Deserialize, Serialize, Validate, Debug)]
-pub struct TaskResponse {
-    pub id: i32,
-    pub title: String,
-    pub priority: Option<String>,
-    pub description: Option<String>,
-}
+
 
 // This is the post route handler for creating a new task
 pub async fn create_task(Extension(database_conn): Extension<DatabaseConnection>, Json(request): Json<TaskRequest>) {
@@ -34,6 +28,14 @@ pub async fn create_task(Extension(database_conn): Extension<DatabaseConnection>
     let result = new_task.save(&database_conn).await.unwrap();
     // Output the result in the console
     dbg!(result);
+}
+
+#[derive(Deserialize, Serialize, Validate, Debug)]
+pub struct TaskResponse {
+    pub id: i32,
+    pub title: String,
+    pub priority: Option<String>,
+    pub description: Option<String>,
 }
 
 // This is the get route handler for a single task
@@ -54,3 +56,44 @@ pub async fn get_task(Path(id): Path<i32>, Extension(database_conn): Extension<D
         Err(StatusCode::NOT_FOUND)
     }
 }
+
+#[derive(Deserialize, Debug)]
+pub struct GetTaskQueryParams {
+    pub priority: Option<String>,
+}
+
+// This is the get route handler for all tasks
+pub async fn get_all_task(Extension(database_conn): Extension<DatabaseConnection>, Query(query_params): Query<GetTaskQueryParams>)
+  -> Result<Json<Vec<TaskResponse>>, StatusCode>{
+
+    // Filter by priority
+    let mut priority_filter = Condition::all();
+    if let Some(priority) = &query_params.priority {
+        // If the priority is empty, add the filter
+        priority_filter = if priority.is_empty() {
+            priority_filter.add(tasks::Column::Priority.is_null())
+        // If the priority is not empty, add the filter
+        } else {
+            priority_filter.add(tasks::Column::Priority.eq(query_params.priority))
+        };
+    }
+
+    // Find all tasks
+    let tasks = tasks::Entity::find()
+    .filter(priority_filter)
+    .all(&database_conn)
+    .await
+    .map_err(|_error| StatusCode::INTERNAL_SERVER_ERROR)?
+    .into_iter()
+    .map(|db_task| TaskResponse {
+        id: db_task.id,
+        title: db_task.title,
+        priority: db_task.priority,
+        description: db_task.description,
+    })
+    .collect();
+
+    // Return all tasks
+    Ok(Json(tasks))
+}
+
