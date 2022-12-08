@@ -1,5 +1,6 @@
 use axum::extract::Query;
 use axum::{Extension, Json, extract::Path, response::IntoResponse, http::StatusCode};
+use sea_orm::prelude::DateTimeWithTimeZone;
 use sea_orm::{DatabaseConnection, Set, ActiveModelTrait, EntityTrait, ColumnTrait, QueryFilter, Condition};
 use serde::{Serialize, Deserialize};
 use validator::Validate;
@@ -92,3 +93,26 @@ pub async fn get_all_task(Extension(database_conn): Extension<DatabaseConnection
     Ok(Json(tasks))
 }
 
+pub struct TaskUpdate {
+    pub id: Option<i32>,
+    pub title: String,
+    pub priority: Option<String>,
+    pub description: Option<String>,
+}
+
+pub async fn update_task(Path(id): Path<i32>, Extension(database_conn): Extension<DatabaseConnection>, Json(request): Json<TaskUpdate>) -> Result<(), StatusCode> {
+    let update_task = tasks::ActiveModel {
+        id: Set(id),
+        title: Set(request.title),
+        priority: Set(request.priority),
+        description: Set(request.description),
+    };
+
+    tasks::update_many(update_task)
+        .filter(tasks::Column::Id.eq(id))
+        .exec(&database_conn)
+        .await
+        .map_err(|_error| StatusCode::INTERNAL_SERVER_ERROR)?;
+
+    Ok(())
+}
