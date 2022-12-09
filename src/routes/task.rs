@@ -1,12 +1,11 @@
 use axum::extract::Query;
-use axum::response::Response;
 use axum::{extract::Path, http::StatusCode, response::IntoResponse, Extension, Json};
 use sea_orm::{
     ActiveModelTrait, ColumnTrait, Condition, DatabaseConnection, DeleteResult, EntityTrait,
     ModelTrait, QueryFilter, Set,
 };
 use serde::{Deserialize, Serialize};
-use validator::{Validate, ValidationErrors};
+use validator::Validate;
 
 use crate::database::tasks;
 
@@ -108,24 +107,6 @@ pub async fn get_all_task(
     Ok(Json(tasks))
 }
 
-// enum CustomError {
-//     NotFound,
-//     InternalServerError,
-//     Validation(ValidationErrors),
-// }
-
-// impl IntoResponse for CustomError {
-//     fn into_response(self) -> Response {
-//         match self {
-//             CustomError::NotFound => (StatusCode::INTERNAL_SERVER_ERROR,String::from""),
-//             CustomError::InternalServerError => (StatusCode::INTERNAL_SERVER_ERROR, ""),
-//             CustomError::Validation(_errors) => (StatusCode::INTERNAL_SERVER_ERROR,"")
-//         }.into_response()
-
-//     }
-// }
-
-
 // This is the put route handler for updating a task
 #[axum_macros::debug_handler]
 pub async fn update_task(
@@ -133,7 +114,6 @@ pub async fn update_task(
     Extension(database_conn): Extension<DatabaseConnection>,
     Json(request): Json<TaskRequest>,
 ) -> Result<Json<TaskRequest>, (StatusCode, String)> {
-
     if let Err(errors) = request.validate() {
         return Err((StatusCode::BAD_REQUEST, format!("{}", errors)));
     }
@@ -164,7 +144,7 @@ pub async fn update_task(
                 priority: task.priority,
                 description: task.description,
             }
-        }), )
+        }))
     } else {
         Err((StatusCode::NOT_FOUND, "Task not found".to_string()))
     }
@@ -174,20 +154,25 @@ pub async fn update_task(
 pub async fn delete_task(
     Path(id): Path<i32>,
     Extension(database_conn): Extension<DatabaseConnection>,
-) -> Result<(), StatusCode> {
+) -> Result<(), (StatusCode, String)> {
     // Find the task by id
     let task: Option<tasks::Model> = tasks::Entity::find_by_id(id)
         .one(&database_conn)
         .await
-        .map_err(|_error| StatusCode::INTERNAL_SERVER_ERROR)?;
-    let task: tasks::Model = task.unwrap();
-    // Delete the task
-    let res: DeleteResult = task
-        .delete(&database_conn)
-        .await
-        .map_err(|_error| StatusCode::INTERNAL_SERVER_ERROR)?;
-    // Check if the task was deleted
-    assert_eq!(res.rows_affected, 1);
+        .map_err(|error| (StatusCode::INTERNAL_SERVER_ERROR, error.to_string()))?;
 
-    Ok(())
+    if let Some(task) = task {
+        let task: tasks::Model = task.into();
+        // Delete the task
+        let res: DeleteResult = task
+            .delete(&database_conn)
+            .await
+            .map_err(|error| (StatusCode::INTERNAL_SERVER_ERROR, error.to_string()))?;
+        // Check if the task was deleted
+        assert_eq!(res.rows_affected, 1);
+
+        Ok(())
+    } else {
+        Err((StatusCode::NOT_FOUND, "Task not found".to_string()))
+    }
 }
