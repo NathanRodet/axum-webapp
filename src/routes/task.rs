@@ -13,32 +13,13 @@ use crate::database::tasks;
 pub struct TaskRequest {
     #[validate(length(min = 3, max = 32, message = "must have between 3 and 32 characters"))]
     pub title: String,
-    #[validate(length(min = 3, message = "must have maximum 3 characters"))]
+    #[validate(length(max = 3, message = "must have maximum 3 characters"))]
     pub priority: Option<String>,
     #[validate(length(min = 3, max = 120, message = "must have between 3 and 32 characters"))]
     pub description: Option<String>,
 }
 
-// This is the post route handler for creating a new task
-pub async fn create_task(
-    Extension(database_conn): Extension<DatabaseConnection>,
-    Json(request): Json<TaskRequest>,
-) {
-    // Validate the request
-    let new_task = tasks::ActiveModel {
-        title: Set(request.title),
-        priority: Set(request.priority),
-        description: Set(request.description),
-        ..Default::default()
-    };
-
-    // Save the new task to the database
-    let result = new_task.save(&database_conn).await.unwrap();
-    // Output the result in the console
-    dbg!(result);
-}
-
-#[derive(Deserialize, Serialize, Debug)]
+#[derive(Deserialize, Serialize, Validate, Debug)]
 pub struct TaskResponse {
     pub id: i32,
     pub title: String,
@@ -46,19 +27,45 @@ pub struct TaskResponse {
     pub description: Option<String>,
 }
 
-// This is the get route handler for a single task
+#[derive(Deserialize, Validate, Debug)]
+pub struct GetTaskQueryParams {
+    #[validate(length(max = 3, message = "must have maximum 3 characters"))]
+    pub priority: String,
+}
+
+pub async fn create_task(
+    Extension(database_conn): Extension<DatabaseConnection>,
+    Json(request): Json<TaskRequest>,
+) -> Result<(), (StatusCode, String)> {
+    if let Err(errors) = request.validate() {
+        return Err((StatusCode::BAD_REQUEST, format!("{}", errors)));
+    }
+
+    let new_task = tasks::ActiveModel {
+        title: Set(request.title),
+        priority: Set(request.priority),
+        description: Set(request.description),
+        ..Default::default()
+    };
+
+    let _result = new_task
+        .save(&database_conn)
+        .await
+        .map_err(|errors| (StatusCode::INTERNAL_SERVER_ERROR, errors));
+
+    Ok(())
+}
+
 pub async fn get_task(
     Path(id): Path<i32>,
     Extension(database_conn): Extension<DatabaseConnection>,
 ) -> impl IntoResponse {
-    // Find the task by id
     let task = tasks::Entity::find_by_id(id)
         .one(&database_conn)
         .await
-        .unwrap();
+        .map_err(|errors| (StatusCode::INTERNAL_SERVER_ERROR, errors));
 
-    // Return the task
-    if let Some(task) = task {
+    if let Some(task) = task.unwrap() {
         let response = TaskResponse {
             id: task.id,
             title: task.title,
@@ -71,16 +78,14 @@ pub async fn get_task(
     }
 }
 
-#[derive(Deserialize, Debug)]
-pub struct GetTaskQueryParams {
-    pub priority: String,
-}
-
-// This is the get route handler for all tasks
 pub async fn get_all_task(
     Extension(database_conn): Extension<DatabaseConnection>,
     query_params: Option<Query<GetTaskQueryParams>>,
-) -> Result<Json<Vec<TaskResponse>>, StatusCode> {
+) -> Result<Json<Vec<TaskResponse>>, (StatusCode, String)> {
+    if let Err(errors) = query_params.as_deref().unwrap().validate() {
+        return Err((StatusCode::BAD_REQUEST, format!("{}", errors)));
+    }
+
     let priority_filter = match query_params {
         Some(query_params) => {
             Condition::all().add(tasks::Column::Priority.eq(&*query_params.priority))
@@ -88,12 +93,11 @@ pub async fn get_all_task(
         None => Condition::all(),
     };
 
-    // Find all tasks
     let tasks = tasks::Entity::find()
         .filter(priority_filter)
         .all(&database_conn)
         .await
-        .map_err(|_error| StatusCode::INTERNAL_SERVER_ERROR)?
+        .map_err(|errors| (StatusCode::INTERNAL_SERVER_ERROR, errors.to_string()))?
         .into_iter()
         .map(|db_task| TaskResponse {
             id: db_task.id,
@@ -103,11 +107,9 @@ pub async fn get_all_task(
         })
         .collect();
 
-    // Return all tasks
     Ok(Json(tasks))
 }
 
-// This is the put route handler for updating a task
 #[axum_macros::debug_handler]
 pub async fn update_task(
     Path(id): Path<i32>,
@@ -126,18 +128,15 @@ pub async fn update_task(
     if let Some(task) = task {
         let mut task: tasks::ActiveModel = task.into();
 
-        // Update attributes
         task.title = Set(request.title);
         task.priority = Set(request.priority);
         task.description = Set(request.description);
 
-        // Update corresponding row in database using primary key value
         let task: tasks::Model = task
             .update(&database_conn)
             .await
             .map_err(|error| (StatusCode::INTERNAL_SERVER_ERROR, error.to_string()))?;
 
-        // Return the updated data for task
         Ok(Json({
             TaskRequest {
                 title: task.title,
@@ -150,12 +149,10 @@ pub async fn update_task(
     }
 }
 
-// This is the delete route handler for deleting a task
 pub async fn delete_task(
     Path(id): Path<i32>,
     Extension(database_conn): Extension<DatabaseConnection>,
 ) -> Result<(), (StatusCode, String)> {
-    // Find the task by id
     let task: Option<tasks::Model> = tasks::Entity::find_by_id(id)
         .one(&database_conn)
         .await
@@ -163,14 +160,11 @@ pub async fn delete_task(
 
     if let Some(task) = task {
         let task: tasks::Model = task.into();
-        // Delete the task
         let res: DeleteResult = task
             .delete(&database_conn)
             .await
             .map_err(|error| (StatusCode::INTERNAL_SERVER_ERROR, error.to_string()))?;
-        // Check if the task was deleted
         assert_eq!(res.rows_affected, 1);
-
         Ok(())
     } else {
         Err((StatusCode::NOT_FOUND, "Task not found".to_string()))
