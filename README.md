@@ -1,6 +1,6 @@
 # axum-webapp
 
-In depth learning of Axum and Rust
+More in depth learning of Axum and Rust
 
 ## Setup db
 
@@ -27,4 +27,10 @@ psql -U postgres -d postgres
 ```
 cargo install sea-orm-cli
 sea-orm-cli generate entity -o src/database
+```
+
+### Debug
+
+```
+#[axum_macros::debug_handler]
 ```

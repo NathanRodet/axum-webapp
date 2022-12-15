@@ -5,10 +5,9 @@ use dotenvy_macro::dotenv;
 // This is the main function
 #[tokio::main]
 async fn main() {
-    // Load the environment variables
     dotenv().ok();
-    let database_uri = dotenv!("DATABASE_URL");
+    let database_uri = dotenv!("DATABASE_URL").to_owned();
+    let jwt_secret = dotenv!("JWT_SECRET").to_owned();
 
-    // Run the server
-    run(database_uri).await;
+    run(database_uri, jwt_secret).await;
 }

@@ -1,5 +1,5 @@
-use axum::extract::Query;
-use axum::{extract::Path, http::StatusCode, response::IntoResponse, Extension, Json};
+use axum::extract::{Query, State};
+use axum::{extract::Path, http::StatusCode, response::IntoResponse, Json};
 use sea_orm::{
     ActiveModelTrait, ColumnTrait, Condition, DatabaseConnection, DeleteResult, EntityTrait,
     ModelTrait, QueryFilter, Set,
@@ -34,7 +34,7 @@ pub struct GetTaskQueryParams {
 }
 
 pub async fn create_task(
-    Extension(database_conn): Extension<DatabaseConnection>,
+    State(database_conn): State<DatabaseConnection>,
     Json(request): Json<TaskRequest>,
 ) -> Result<(), (StatusCode, String)> {
     if let Err(errors) = request.validate() {
@@ -58,7 +58,7 @@ pub async fn create_task(
 
 pub async fn get_task(
     Path(id): Path<i32>,
-    Extension(database_conn): Extension<DatabaseConnection>,
+    State(database_conn): State<DatabaseConnection>,
 ) -> impl IntoResponse {
     let task = tasks::Entity::find_by_id(id)
         .one(&database_conn)
@@ -78,10 +78,10 @@ pub async fn get_task(
     }
 }
 
-pub async fn get_all_task(
-    Extension(database_conn): Extension<DatabaseConnection>,
+pub async fn get_all_tasks(
+    State(database_conn): State<DatabaseConnection>,
     query_params: Option<Query<GetTaskQueryParams>>,
-) -> Result<Json<Vec<TaskResponse>>, (StatusCode, String)> {
+) -> Result<Json<Vec<TaskResponse>>, (StatusCode, String)>  {
     if let Err(errors) = query_params.as_deref().unwrap().validate() {
         return Err((StatusCode::BAD_REQUEST, format!("{}", errors)));
     }
@@ -110,10 +110,9 @@ pub async fn get_all_task(
     Ok(Json(tasks))
 }
 
-#[axum_macros::debug_handler]
 pub async fn update_task(
     Path(id): Path<i32>,
-    Extension(database_conn): Extension<DatabaseConnection>,
+    State(database_conn): State<DatabaseConnection>,
     Json(request): Json<TaskRequest>,
 ) -> Result<Json<TaskRequest>, (StatusCode, String)> {
     if let Err(errors) = request.validate() {
@@ -151,7 +150,7 @@ pub async fn update_task(
 
 pub async fn delete_task(
     Path(id): Path<i32>,
-    Extension(database_conn): Extension<DatabaseConnection>,
+    State(database_conn): State<DatabaseConnection>,
 ) -> Result<(), (StatusCode, String)> {
     let task: Option<tasks::Model> = tasks::Entity::find_by_id(id)
         .one(&database_conn)

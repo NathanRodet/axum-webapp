@@ -1,9 +1,22 @@
 use crate::router::create_routes;
-use sea_orm::Database;
+use axum_macros::FromRef;
+use sea_orm::{Database, DatabaseConnection};
 
-pub async fn run(database_uri: &str) {
+#[derive(Clone, FromRef)]
+pub struct AppState {
+    database_conn: DatabaseConnection,
+    jwt_secret: String,
+}
+
+pub async fn run(database_uri: String, jwt_secret: String) {
     let database_conn = Database::connect(database_uri).await.unwrap();
-    let app = create_routes(database_conn);
+
+    let app_state = AppState {
+        database_conn,
+        jwt_secret,
+    };
+
+    let app = create_routes(app_state);
 
     // Start the server
     axum::Server::bind(&"0.0.0.0:3000".parse().unwrap())

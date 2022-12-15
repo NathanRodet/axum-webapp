@@ -1,24 +1,18 @@
-use axum::Extension;
-use axum::routing::{post, put, delete};
-use axum::{routing::get, Router};
-use sea_orm::DatabaseConnection;
-use crate::routes::task::{create_task, get_task, get_all_task, update_task, delete_task};
 use crate::routes::index::hello_world;
-use crate::routes::validate_data::custom_json_extractor;
-use crate::routes::validate_data::validate_user;
+use crate::routes::task::{create_task, delete_task, get_all_tasks, get_task, update_task};
+use crate::routes::user::create_user;
+use crate::server::AppState;
+use axum::routing::{delete, post, put};
+use axum::{routing::get, Router};
 
-// This is the function that creates the routes
-pub async fn create_routes(database_conn: DatabaseConnection) -> Router {
-
+pub async fn create_routes(app_state: AppState) -> Router {
     Router::new()
         .route("/", get(hello_world))
-        .route("/validate_user", post(validate_user))
-        .route("/custom_json_extractor", post(custom_json_extractor))
         .route("/task", post(create_task))
-        .route("/task", get(get_all_task))
+        .route("/task", get(get_all_tasks))
         .route("/task/:id", get(get_task))
         .route("/task/:id", put(update_task))
         .route("/task/:id", delete(delete_task))
-        .layer(Extension(database_conn))
+        .route("/user", post(create_user))
+        .with_state(app_state)
 }
-
