@@ -10,9 +10,7 @@ struct Claims {
     iat: usize, // Optional. Issued at (as UTC timestamp)
 }
 
-pub async fn create_token(
-    State(jwt_secret): State<String>,
-) -> Result<String, (StatusCode, String)> {
+pub async fn create_token(jwt_secret: String) -> Result<String, (StatusCode, String)> {
     let created_at = Utc::now();
     let expires_at = created_at + Duration::hours(24);
 
@@ -30,4 +28,11 @@ pub async fn create_token(
     .map_err(|errors| (StatusCode::INTERNAL_SERVER_ERROR, format!("{}", errors)))?;
 
     Ok(token)
+}
+
+pub async fn verify_token(
+    State(jwt_secret): State<String>,
+    token: String,
+) -> Result<Claims, (StatusCode, String)> {
+    todo!()
 }
