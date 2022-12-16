@@ -4,7 +4,10 @@ use sea_orm::{ColumnTrait, DatabaseConnection, EntityTrait, QueryFilter};
 use serde::{Deserialize, Serialize};
 use validator::Validate;
 
-use crate::{database::users, utils::jwt::create_token};
+use crate::{
+    database::users,
+    utils::jwt::{create_token, refresh_token},
+};
 
 #[derive(Debug, Serialize, Deserialize, Validate)]
 pub struct AuthRequest {
@@ -17,6 +20,11 @@ pub struct AuthRequest {
 #[derive(Debug, Serialize, Deserialize, Validate)]
 pub struct AuthResponse {
     pub token: String,
+}
+
+pub struct User {
+    pub id: i32,
+    pub username: String,
 }
 
 pub async fn login(
@@ -43,10 +51,31 @@ pub async fn login(
                 return Err((StatusCode::UNAUTHORIZED, "Invalid password".to_string()));
             }
 
-            let token = create_token(jwt_secret).await?;
+            let token = create_token(jwt_secret, user.id)
+                .await
+                .map_err(|errors| (StatusCode::INTERNAL_SERVER_ERROR, format!("{:?}", errors)))?;
 
             return Ok(Json(AuthResponse { token }));
         }
         None => return Err((StatusCode::NOT_FOUND, "User not found".to_string())),
     }
+}
+
+#[derive(Debug, Serialize, Deserialize, Validate)]
+pub struct RenewRequest {
+    #[validate(length(min = 160, max = 160, message = "Token is not valid"))]
+    pub token: String,
+}
+
+pub async fn renew_auth(
+    State(jwt_secret): State<String>,
+    Json(user_request): Json<RenewRequest>,
+) -> Result<Json<AuthResponse>, (StatusCode, String)> {
+    if let Err(errors) = user_request.validate() {
+        return Err((StatusCode::BAD_REQUEST, format!("{}", errors)));
+    }
+
+    let token = refresh_token(jwt_secret, user_request.token).await?;
+
+    Ok(Json(AuthResponse { token }))
 }
