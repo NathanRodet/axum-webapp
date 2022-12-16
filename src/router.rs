@@ -1,6 +1,6 @@
 use crate::routes::index::hello_world;
 use crate::routes::task::{create_task, delete_task, get_all_tasks, get_task, update_task};
-use crate::routes::user::{create_user, get_all_users};
+use crate::routes::user::{create_user, delete_user_by_username, get_all_users};
 use crate::server::AppState;
 use axum::routing::{delete, post, put};
 use axum::{routing::get, Router};
@@ -15,5 +15,6 @@ pub async fn create_routes(app_state: AppState) -> Router {
         .route("/task/:id", delete(delete_task))
         .route("/user", post(create_user))
         .route("/user", get(get_all_users))
+        .route("/user/:username", delete(delete_user_by_username))
         .with_state(app_state)
 }

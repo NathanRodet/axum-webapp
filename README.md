@@ -1,6 +1,6 @@
 # axum-webapp
 
-More in depth learning of Axum and Rust
+In depth learning of Axum and Rust to create reliable application
 
 ## Setup db
 

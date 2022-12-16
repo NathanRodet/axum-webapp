@@ -1,7 +1,12 @@
-use axum::{extract::State, http::StatusCode, Json};
+use axum::{
+    extract::{Path, State},
+    http::StatusCode,
+    Json,
+};
 use bcrypt::{hash, DEFAULT_COST};
 use sea_orm::{
-    ActiveModelTrait, ColumnTrait, DatabaseConnection, EntityTrait, QueryFilter, Set, TryIntoModel,
+    ActiveModelTrait, ColumnTrait, DatabaseConnection, DeleteResult, EntityTrait, ModelTrait,
+    QueryFilter, Set, TryIntoModel,
 };
 use serde::{Deserialize, Serialize};
 use validator::Validate;
@@ -85,4 +90,37 @@ pub async fn get_all_users(
         .collect();
 
     Ok(Json(users))
+}
+
+#[derive(Debug, Serialize, Deserialize, Validate)]
+pub struct DeleteUserByUsernameRequest {
+    #[validate(email(message = "must be a valid email"))]
+    pub username: String,
+}
+
+pub async fn delete_user_by_username(
+    Path(username): Path<DeleteUserByUsernameRequest>,
+    State(database_conn): State<DatabaseConnection>,
+) -> Result<(), (StatusCode, String)> {
+    if let Err(errors) = username.validate() {
+        return Err((StatusCode::BAD_REQUEST, format!("{}", errors)));
+    }
+
+    let user = users::Entity::find()
+        .filter(users::Column::Username.eq(username.username))
+        .one(&database_conn)
+        .await
+        .map_err(|errors| (StatusCode::INTERNAL_SERVER_ERROR, format!("{}", errors)))?;
+
+    if let Some(user) = user {
+        let user: users::Model = user.into();
+        let res: DeleteResult = user
+            .delete(&database_conn)
+            .await
+            .map_err(|error| (StatusCode::INTERNAL_SERVER_ERROR, error.to_string()))?;
+        assert_eq!(res.rows_affected, 1);
+        Ok(())
+    } else {
+        Err((StatusCode::NOT_FOUND, "User not found".to_string()))
+    }
 }
