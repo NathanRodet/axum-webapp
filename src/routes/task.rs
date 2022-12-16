@@ -51,7 +51,7 @@ pub async fn create_task(
     let _result = new_task
         .save(&database_conn)
         .await
-        .map_err(|errors| (StatusCode::INTERNAL_SERVER_ERROR, errors));
+        .map_err(|errors| (StatusCode::INTERNAL_SERVER_ERROR, format!("{}", errors)));
 
     Ok(())
 }
@@ -63,7 +63,7 @@ pub async fn get_task(
     let task = tasks::Entity::find_by_id(id)
         .one(&database_conn)
         .await
-        .map_err(|errors| (StatusCode::INTERNAL_SERVER_ERROR, errors));
+        .map_err(|errors| (StatusCode::INTERNAL_SERVER_ERROR, format!("{}", errors)));
 
     if let Some(task) = task.unwrap() {
         let response = TaskResponse {
@@ -96,7 +96,7 @@ pub async fn get_all_tasks(
         .filter(priority_filter)
         .all(&database_conn)
         .await
-        .map_err(|errors| (StatusCode::INTERNAL_SERVER_ERROR, errors.to_string()))?
+        .map_err(|errors| (StatusCode::INTERNAL_SERVER_ERROR, format!("{}", errors)))?
         .into_iter()
         .map(|db_task| TaskResponse {
             id: db_task.id,
@@ -121,7 +121,7 @@ pub async fn update_task(
     let task: Option<tasks::Model> = tasks::Entity::find_by_id(id)
         .one(&database_conn)
         .await
-        .map_err(|error| (StatusCode::INTERNAL_SERVER_ERROR, error.to_string()))?;
+        .map_err(|errors| (StatusCode::INTERNAL_SERVER_ERROR, format!("{}", errors)))?;
 
     if let Some(task) = task {
         let mut task: tasks::ActiveModel = task.into();
@@ -133,7 +133,7 @@ pub async fn update_task(
         let task: tasks::Model = task
             .update(&database_conn)
             .await
-            .map_err(|error| (StatusCode::INTERNAL_SERVER_ERROR, error.to_string()))?;
+            .map_err(|errors| (StatusCode::INTERNAL_SERVER_ERROR, format!("{}", errors)))?;
 
         Ok(Json({
             TaskRequest {
@@ -154,14 +154,14 @@ pub async fn delete_task(
     let task: Option<tasks::Model> = tasks::Entity::find_by_id(id)
         .one(&database_conn)
         .await
-        .map_err(|error| (StatusCode::INTERNAL_SERVER_ERROR, error.to_string()))?;
+        .map_err(|errors| (StatusCode::INTERNAL_SERVER_ERROR, format!("{}", errors)))?;
 
     if let Some(task) = task {
         let task: tasks::Model = task.into();
         let res: DeleteResult = task
             .delete(&database_conn)
             .await
-            .map_err(|error| (StatusCode::INTERNAL_SERVER_ERROR, error.to_string()))?;
+            .map_err(|errors| (StatusCode::INTERNAL_SERVER_ERROR, format!("{}", errors)))?;
         assert_eq!(res.rows_affected, 1);
         Ok(())
     } else {

@@ -53,7 +53,7 @@ pub async fn login(
 
             let token = create_token(jwt_secret, user.id)
                 .await
-                .map_err(|errors| (StatusCode::INTERNAL_SERVER_ERROR, format!("{:?}", errors)))?;
+                .map_err(|errors| (StatusCode::INTERNAL_SERVER_ERROR, format!("{}", errors)))?;
 
             return Ok(Json(AuthResponse { token }));
         }
@@ -75,7 +75,9 @@ pub async fn renew_auth(
         return Err((StatusCode::BAD_REQUEST, format!("{}", errors)));
     }
 
-    let token = refresh_token(jwt_secret, user_request.token).await?;
+    let token = refresh_token(jwt_secret, user_request.token)
+        .await
+        .map_err(|errors| (StatusCode::UNAUTHORIZED, format!("{}", errors)))?;
 
     Ok(Json(AuthResponse { token }))
 }
