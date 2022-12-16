@@ -24,3 +24,4 @@ dotenvy_macro = "0.15.1"
 validator = { version = "0.16.0", features = ["derive"] }
 jsonwebtoken = "8.2.0"
 chrono = "0.4.19"
+bcrypt = "0.13.0"

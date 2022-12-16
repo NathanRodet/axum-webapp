@@ -1,5 +1,8 @@
 use axum::{extract::State, http::StatusCode, Json};
-use sea_orm::{ActiveModelTrait, DatabaseConnection, Set, TryIntoModel};
+use bcrypt::{hash, DEFAULT_COST};
+use sea_orm::{
+    ActiveModelTrait, ColumnTrait, DatabaseConnection, EntityTrait, QueryFilter, Set, TryIntoModel,
+};
 use serde::{Deserialize, Serialize};
 use validator::Validate;
 
@@ -27,9 +30,21 @@ pub async fn create_user(
         return Err((StatusCode::BAD_REQUEST, format!("{}", errors)));
     }
 
+    if let Some(_new_user) = users::Entity::find()
+        .filter(users::Column::Username.eq(user_request.username.clone()))
+        .one(&database_conn)
+        .await
+        .map_err(|errors| (StatusCode::INTERNAL_SERVER_ERROR, format!("{}", errors)))?
+    {
+        return Err((StatusCode::BAD_REQUEST, format!("User already exists")));
+    }
+
+    let new_user = hash(user_request.password, DEFAULT_COST)
+        .map_err(|errors| (StatusCode::INTERNAL_SERVER_ERROR, format!("{}", errors)))?;
+
     let new_user = users::ActiveModel {
         username: Set(user_request.username),
-        password: Set(user_request.password),
+        password: Set(new_user),
         ..Default::default()
     };
 
@@ -50,9 +65,24 @@ pub async fn create_user(
 pub struct GetAllUsersResponse {
     pub id: i32,
     pub username: String,
+    pub password: String,
 }
 
-pub async fn get_all_users() -> Result<Json<Vec<GetAllUsersResponse>>, (StatusCode, String)> {
-    
-    todo!()
+#[axum_macros::debug_handler]
+pub async fn get_all_users(
+    State(database_conn): State<DatabaseConnection>,
+) -> Result<Json<Vec<GetAllUsersResponse>>, (StatusCode, String)> {
+    let users: Vec<GetAllUsersResponse> = users::Entity::find()
+        .all(&database_conn)
+        .await
+        .map_err(|errors| (StatusCode::INTERNAL_SERVER_ERROR, format!("{}", errors)))?
+        .into_iter()
+        .map(|users| GetAllUsersResponse {
+            id: users.id,
+            username: users.username,
+            password: users.password,
+        })
+        .collect();
+
+    Ok(Json(users))
 }
