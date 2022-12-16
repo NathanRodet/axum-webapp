@@ -3,7 +3,7 @@ use sea_orm::{ActiveModelTrait, DatabaseConnection, Set, TryIntoModel};
 use serde::{Deserialize, Serialize};
 use validator::Validate;
 
-use crate::{database::users, utils::jwt::create_token};
+use crate::database::users;
 
 #[derive(Debug, Serialize, Deserialize, Validate)]
 pub struct CreateUserRequest {
@@ -21,7 +21,6 @@ pub struct CreateUserResponse {
 
 pub async fn create_user(
     State(database_conn): State<DatabaseConnection>,
-    State(jwt_secret): State<String>,
     Json(user_request): Json<CreateUserRequest>,
 ) -> Result<Json<CreateUserResponse>, (StatusCode, String)> {
     if let Err(errors) = user_request.validate() {
@@ -45,4 +44,15 @@ pub async fn create_user(
         id: new_user.id,
         username: new_user.username,
     }))
+}
+
+#[derive(Debug, Serialize, Deserialize, Validate)]
+pub struct GetAllUsersResponse {
+    pub id: i32,
+    pub username: String,
+}
+
+pub async fn get_all_users() -> Result<Json<Vec<GetAllUsersResponse>>, (StatusCode, String)> {
+    
+    todo!()
 }

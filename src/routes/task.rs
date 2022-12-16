@@ -81,13 +81,12 @@ pub async fn get_task(
 pub async fn get_all_tasks(
     State(database_conn): State<DatabaseConnection>,
     query_params: Option<Query<GetTaskQueryParams>>,
-) -> Result<Json<Vec<TaskResponse>>, (StatusCode, String)>  {
-    if let Err(errors) = query_params.as_deref().unwrap().validate() {
-        return Err((StatusCode::BAD_REQUEST, format!("{}", errors)));
-    }
-
+) -> Result<Json<Vec<TaskResponse>>, (StatusCode, String)> {
     let priority_filter = match query_params {
         Some(query_params) => {
+            if let Err(errors) = query_params.validate() {
+                return Err((StatusCode::BAD_REQUEST, format!("{}", errors)));
+            }
             Condition::all().add(tasks::Column::Priority.eq(&*query_params.priority))
         }
         None => Condition::all(),
