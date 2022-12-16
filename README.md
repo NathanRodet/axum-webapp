@@ -1,5 +1,5 @@
 # axum-webapp
-In depth learning of Axum and Rust
+In depth learning of Axum and Rust to create reliable application
 
 ## postgresql db
 
