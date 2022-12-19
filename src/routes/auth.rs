@@ -27,7 +27,7 @@ pub struct User {
     pub username: String,
 }
 
-pub async fn login(
+pub async fn auth(
     State(jwt_secret): State<String>,
     State(database_conn): State<DatabaseConnection>,
     Json(user_request): Json<AuthRequest>,

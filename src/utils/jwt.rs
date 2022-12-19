@@ -1,4 +1,10 @@
-use axum::Json;
+use axum::{
+    async_trait,
+    extract::FromRequestParts,
+    headers::{authorization::Bearer, Authorization},
+    http::request::Parts,
+    Json, RequestPartsExt, TypedHeader,
+};
 use chrono::{Duration, Utc};
 use jsonwebtoken::{decode, encode, Algorithm, DecodingKey, EncodingKey, Header, Validation};
 use serde::{Deserialize, Serialize};
@@ -7,8 +13,8 @@ use serde::{Deserialize, Serialize};
 pub struct Claims {
     id: i32,
     is_admin: bool,
-    exp: usize, // Required (validate_exp defaults to true in validation). Expiration time (as UTC timestamp)
-    iat: usize, // Optional. Issued at (as UTC timestamp)
+    exp: usize,
+    iat: usize,
 }
 
 pub async fn create_token(jwt_secret: String, id: i32) -> Result<String, String> {
@@ -33,21 +39,29 @@ pub async fn create_token(jwt_secret: String, id: i32) -> Result<String, String>
 }
 
 async fn decode_token(jwt_secret: String, token: String) -> Result<Json<Claims>, String> {
-    let token_message = decode::<Claims>(
+    let token_data = decode::<Claims>(
         &token,
         &DecodingKey::from_secret(jwt_secret.as_bytes()),
         &Validation::new(Algorithm::HS256),
     )
     .map_err(|errors| errors.to_string())?;
 
-    return Ok(Json(token_message.claims));
+    return Ok(Json(token_data.claims));
 }
 
 pub async fn refresh_token(jwt_secret: String, token: String) -> Result<String, String> {
     let token = decode_token(jwt_secret.clone(), token)
         .await
         .map_err(|errors| errors.to_string())?;
-    let token = create_token(jwt_secret, token.id)
+
+    let claims = Claims {
+        id: token.id,
+        is_admin: token.is_admin,
+        exp: token.exp,
+        iat: token.iat,
+    };
+
+    let token = create_token(jwt_secret, claims.id)
         .await
         .map_err(|errors| errors.to_string())?;
 

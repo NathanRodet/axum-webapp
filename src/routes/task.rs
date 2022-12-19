@@ -41,14 +41,14 @@ pub async fn create_task(
         return Err((StatusCode::BAD_REQUEST, format!("{}", errors)));
     }
 
-    let new_task = tasks::ActiveModel {
+    let task = tasks::ActiveModel {
         title: Set(request.title),
         priority: Set(request.priority),
         description: Set(request.description),
         ..Default::default()
     };
 
-    let _result = new_task
+    let _result = task
         .save(&database_conn)
         .await
         .map_err(|errors| (StatusCode::INTERNAL_SERVER_ERROR, format!("{}", errors)));

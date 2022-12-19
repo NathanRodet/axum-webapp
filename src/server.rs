@@ -11,6 +11,7 @@ pub struct AppState {
 pub async fn run(database_uri: String, jwt_secret: String) {
     let database_conn = Database::connect(database_uri).await.unwrap();
 
+    
     let app_state = AppState {
         database_conn,
         jwt_secret,
