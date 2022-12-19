@@ -1,4 +1,6 @@
-pub mod server;
+pub mod database;
 pub mod router;
 pub mod routes;
-pub mod database;
+pub mod server;
+pub mod utils;
+pub mod middlewares;

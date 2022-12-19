@@ -2,16 +2,26 @@
 name = "axum-webapp"
 version = "0.1.0"
 edition = "2021"
+description = "Learning Rust by doing apps"
+readme = "README.md"
+repository = "https://github.com/NathanRodet/axum-webapp"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
 tokio = { version = "1", features = ["full"] }
-axum = {version = "0.6.1", features = ["headers"] }
+axum = { version = "0.6.1", features = ["headers"] }
 serde = { version = "1.0.147", features = ["derive"] }
 axum-macros = "0.3.0"
 tower-http = { version = "0.3.4", features = ["cors"] }
 tower = { version = "0.4", features = ["full"] }
-sea-orm = { version = "0.10.5", features = ["sqlx-postgres", "runtime-tokio-rustls"] }
+sea-orm = { version = "0.10.5", features = [
+  "sqlx-postgres",
+  "runtime-tokio-rustls",
+] }
 dotenvy = "0.15.6"
 dotenvy_macro = "0.15.1"
+validator = { version = "0.16.0", features = ["derive"] }
+jsonwebtoken = "8.2.0"
+chrono = "0.4.19"
+bcrypt = "0.13.0"
