@@ -1,5 +1,3 @@
-# axum-webapp
-
 In depth learning of Axum and Rust to create reliable application
 
 ## Setup db
@@ -34,3 +32,6 @@ sea-orm-cli generate entity -o src/database
 ```
 #[axum_macros::debug_handler]
 ```
+- password = password
+- user     = postgres
+- database = postgres
