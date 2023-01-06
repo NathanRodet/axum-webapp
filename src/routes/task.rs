@@ -1,5 +1,5 @@
 use axum::extract::{Query, State};
-use axum::{extract::Path, http::StatusCode, response::IntoResponse, Json};
+use axum::{extract::Path, http::StatusCode, Json};
 use sea_orm::{
     ActiveModelTrait, ColumnTrait, Condition, DatabaseConnection, DeleteResult, EntityTrait,
     ModelTrait, QueryFilter, Set,
@@ -59,22 +59,23 @@ pub async fn create_task(
 pub async fn get_task(
     Path(id): Path<i32>,
     State(database_conn): State<DatabaseConnection>,
-) -> impl IntoResponse {
+) -> Result<Json<TaskResponse>, (StatusCode, String)> {
     let task = tasks::Entity::find_by_id(id)
         .one(&database_conn)
         .await
         .map_err(|errors| (StatusCode::INTERNAL_SERVER_ERROR, format!("{}", errors)));
 
-    if let Some(task) = task.unwrap() {
-        let response = TaskResponse {
-            id: task.id,
-            title: task.title,
-            priority: task.priority,
-            description: task.description,
-        };
-        Ok(Json(response))
-    } else {
-        Err(StatusCode::NOT_FOUND)
+    match task.unwrap() {
+        Some(task) => {
+            let task = TaskResponse {
+                id: task.id,
+                title: task.title,
+                priority: task.priority,
+                description: task.description,
+            };
+            Ok(Json(task))
+        }
+        None => Err((StatusCode::NOT_FOUND, "Task not found".to_string())),
     }
 }
 
@@ -123,27 +124,28 @@ pub async fn update_task(
         .await
         .map_err(|errors| (StatusCode::INTERNAL_SERVER_ERROR, format!("{}", errors)))?;
 
-    if let Some(task) = task {
-        let mut task: tasks::ActiveModel = task.into();
+    match task {
+        Some(task) => {
+            let mut task: tasks::ActiveModel = task.into();
 
-        task.title = Set(request.title);
-        task.priority = Set(request.priority);
-        task.description = Set(request.description);
+            task.title = Set(request.title);
+            task.priority = Set(request.priority);
+            task.description = Set(request.description);
 
-        let task: tasks::Model = task
-            .update(&database_conn)
-            .await
-            .map_err(|errors| (StatusCode::INTERNAL_SERVER_ERROR, format!("{}", errors)))?;
+            let task: tasks::Model = task
+                .update(&database_conn)
+                .await
+                .map_err(|errors| (StatusCode::INTERNAL_SERVER_ERROR, format!("{}", errors)))?;
 
-        Ok(Json({
-            TaskRequest {
-                title: task.title,
-                priority: task.priority,
-                description: task.description,
-            }
-        }))
-    } else {
-        Err((StatusCode::NOT_FOUND, "Task not found".to_string()))
+            Ok(Json({
+                TaskRequest {
+                    title: task.title,
+                    priority: task.priority,
+                    description: task.description,
+                }
+            }))
+        }
+        None => Err((StatusCode::NOT_FOUND, "Task not found".to_string())),
     }
 }
 
