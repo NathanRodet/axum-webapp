@@ -1,9 +1,5 @@
 use axum::{
-    async_trait,
-    extract::FromRequestParts,
-    headers::{authorization::Bearer, Authorization},
-    http::request::Parts,
-    Json, RequestPartsExt, TypedHeader,
+    Json,
 };
 use chrono::{Duration, Utc};
 use jsonwebtoken::{decode, encode, Algorithm, DecodingKey, EncodingKey, Header, Validation};

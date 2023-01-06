@@ -4,14 +4,13 @@ use sea_orm::{Database, DatabaseConnection};
 
 #[derive(Clone, FromRef)]
 pub struct AppState {
-    database_conn: DatabaseConnection,
-    jwt_secret: String,
+    pub database_conn: DatabaseConnection,
+    pub(crate) jwt_secret: String,
 }
 
 pub async fn run(database_uri: String, jwt_secret: String) {
     let database_conn = Database::connect(database_uri).await.unwrap();
 
-    
     let app_state = AppState {
         database_conn,
         jwt_secret,
